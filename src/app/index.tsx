@@ -1,13 +1,27 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+const exercises = [
+  { question: '7 + 5', answer: '12' },
+  { question: '9 + 4', answer: '13' },
+  { question: '15 - 7', answer: '8' },
+  { question: '8 + 6', answer: '14' },
+  { question: '17 - 9', answer: '8' },
+];
+
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'];
 
 export default function HomeScreen() {
+  const [exerciseIndex, setExerciseIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [finished, setFinished] = useState(false);
+
+  const exercise = exercises[exerciseIndex];
 
   function handleKey(key: string) {
+    if (finished) return;
+
     if (key === '⌫') {
       setAnswer(answer.slice(0, -1));
       setFeedback('');
@@ -15,7 +29,23 @@ export default function HomeScreen() {
     }
 
     if (key === 'OK') {
-      setFeedback(answer === '12' ? 'Corect! 🎉' : 'Mai încearcă.');
+      if (answer === exercise.answer) {
+        setFeedback('Corect! 🎉');
+
+        setTimeout(() => {
+          if (exerciseIndex === exercises.length - 1) {
+            setFinished(true);
+            setFeedback('');
+          } else {
+            setExerciseIndex(exerciseIndex + 1);
+            setAnswer('');
+            setFeedback('');
+          }
+        }, 600);
+      } else {
+        setFeedback('Mai încearcă.');
+      }
+
       return;
     }
 
@@ -23,11 +53,24 @@ export default function HomeScreen() {
     setFeedback('');
   }
 
+  if (finished) {
+    return (
+      <View style={styles.finishedContainer}>
+        <Text style={styles.finishedTitle}>Sesiune terminată! 🎉</Text>
+        <Text style={styles.finishedText}>Ai rezolvat 5 exerciții.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Aritmetică Mentală</Text>
 
-      <Text style={styles.question}>7 + 5 = ?</Text>
+      <Text style={styles.progress}>
+        Exercițiul {exerciseIndex + 1} din {exercises.length}
+      </Text>
+
+      <Text style={styles.question}>{exercise.question} = ?</Text>
 
       <View style={styles.answerBox}>
         <Text style={styles.answer}>{answer}</Text>
@@ -57,18 +100,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7FAFF',
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 55,
     paddingHorizontal: 28,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    marginBottom: 55,
+    marginBottom: 20,
+  },
+  progress: {
+    fontSize: 18,
+    marginBottom: 25,
   },
   question: {
     fontSize: 48,
     fontWeight: '800',
-    marginBottom: 30,
+    marginBottom: 25,
   },
   answerBox: {
     width: 170,
@@ -86,7 +133,7 @@ const styles = StyleSheet.create({
   },
   feedback: {
     height: 40,
-    marginTop: 16,
+    marginTop: 12,
     fontSize: 22,
     fontWeight: '700',
   },
@@ -95,7 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 15,
+    marginTop: 5,
   },
   key: {
     width: '30%',
@@ -117,5 +164,22 @@ const styles = StyleSheet.create({
   },
   okText: {
     color: '#FFFFFF',
+  },
+  finishedContainer: {
+    flex: 1,
+    backgroundColor: '#F7FAFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+  },
+  finishedTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  finishedText: {
+    fontSize: 22,
+    textAlign: 'center',
   },
 });
