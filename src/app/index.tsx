@@ -5,58 +5,108 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 const exercises = [
-  { question: '7 + 5', answer: '12' },
-  { question: '9 + 4', answer: '13' },
-  { question: '15 - 7', answer: '8' },
-  { question: '8 + 6', answer: '14' },
-  { question: '17 - 9', answer: '8' },
+  { question: '7 + 5 = ?', answer: '12' },
+  { question: '6 + 7 = ?', answer: '13' },
+  { question: '3 + 5 = ?', answer: '8' },
+  { question: '8 + 6 = ?', answer: '14' },
+  { question: '4 + 4 = ?', answer: '8' },
 ];
 
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', 'OK'];
 
 export default function HomeScreen() {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const usableHeight = height - insets.top - insets.bottom;
+
+  const isTablet = width >= 700;
+  const isCompact = usableHeight < 760;
+
+  const contentWidth = Math.min(width - 28, isTablet ? 560 : 430);
+
+  const mindySize = isTablet ? 150 : isCompact ? 88 : 105;
+  const questionSize = isTablet ? 54 : isCompact ? 36 : 42;
+  const keyHeight = isTablet ? 68 : isCompact ? 47 : 52;
+  const keyFontSize = isTablet ? 30 : isCompact ? 22 : 24;
+
   const [exerciseIndex, setExerciseIndex] = useState(0);
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [finished, setFinished] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const [skillStrengthened, setSkillStrengthened] = useState(false);
-  const [showWow, setShowWow] = useState(false);
+  const [showSkillMessage, setShowSkillMessage] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   const glow = useRef(new Animated.Value(0)).current;
+  const sparkleY = useRef(new Animated.Value(25)).current;
+  const sparkleOpacity = useRef(new Animated.Value(0)).current;
 
   const exercise = exercises[exerciseIndex];
 
+  const progressWidth = `${
+    ((exerciseIndex + 1) / exercises.length) * 100
+  }%` as `${number}%`;
+
   function triggerSkillMoment() {
-    setSkillStrengthened(true);
-    setShowWow(true);
+    setShowSkillMessage(true);
 
     glow.setValue(0);
+    sparkleY.setValue(25);
+    sparkleOpacity.setValue(0);
 
     Animated.sequence([
-      Animated.timing(glow, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }),
-      Animated.timing(glow, {
-        toValue: 0.4,
-        duration: 700,
-        useNativeDriver: true,
-      }),
+      Animated.parallel([
+        Animated.timing(sparkleOpacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sparkleY, {
+          toValue: -65,
+          duration: 850,
+          useNativeDriver: true,
+        }),
+      ]),
+
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(glow, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glow, {
+            toValue: 0,
+            duration: 450,
+            useNativeDriver: true,
+          }),
+        ]),
+
+        Animated.timing(sparkleOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start();
 
     setTimeout(() => {
-      setShowWow(false);
+      setShowSkillMessage(false);
     }, 3000);
   }
 
   function handleKey(key: string) {
-    if (finished) return;
+    if (finished || locked) return;
 
     if (key === '⌫') {
       setAnswer(answer.slice(0, -1));
@@ -66,234 +116,326 @@ export default function HomeScreen() {
 
     if (key === 'OK') {
       if (answer === exercise.answer) {
-        const newCorrectCount = correctCount + 1;
-
-        setCorrectCount(newCorrectCount);
+        setLocked(true);
         setFeedback('Corect! 🎉');
 
-        if (newCorrectCount === 3 && !skillStrengthened) {
+        const newCorrectCount = correctCount + 1;
+        setCorrectCount(newCorrectCount);
+
+        const isSkillMoment = newCorrectCount === 3;
+
+        if (isSkillMoment) {
           triggerSkillMoment();
         }
 
-        setTimeout(() => {
-          if (exerciseIndex === exercises.length - 1) {
-            setFinished(true);
-            setFeedback('');
-          } else {
-            setExerciseIndex(exerciseIndex + 1);
-            setAnswer('');
-            setFeedback('');
-          }
-        }, newCorrectCount === 3 ? 3200: 600);
-      } else {
-        setFeedback('Mai exersăm puțin.');
+        setTimeout(
+          () => {
+            if (exerciseIndex === exercises.length - 1) {
+              setFinished(true);
+              setFeedback('');
+            } else {
+              setExerciseIndex(exerciseIndex + 1);
+              setAnswer('');
+              setFeedback('');
+              setLocked(false);
+            }
+          },
+          isSkillMoment ? 3200 : 600
+        );
+
+        return;
       }
 
+      setFeedback('Mai exersăm puțin.');
       return;
     }
 
     if (answer.length < 3) {
       setAnswer(answer + key);
+      setFeedback('');
     }
-
-    setFeedback('');
   }
 
   if (finished) {
     return (
-      <View style={styles.finishedContainer}>
-        <Text style={styles.finishedBrain}>
-          🧠 {skillStrengthened ? '✨' : ''}
-        </Text>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.finishedContainer}>
+          <Image
+            source={require('../../assets/images/mindy.png')}
+            style={{
+              width: isTablet ? 220 : 165,
+              height: isTablet ? 220 : 165,
+            }}
+            resizeMode="contain"
+          />
 
-        <Text style={styles.finishedTitle}>Misiune terminată! 🎉</Text>
+          <Text style={styles.finishedTitle}>Misiune terminată! 🎉</Text>
 
-        <Text style={styles.finishedText}>
-          Ai rezolvat 5 exerciții.
-        </Text>
-
-        {skillStrengthened && (
-          <Text style={styles.finishedSkill}>
-            Ai întărit o abilitate!
+          <Text style={styles.finishedText}>
+            Ai terminat cele 5 exerciții de azi.
           </Text>
-        )}
-      </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-<Text style={styles.missionTitle}>Misiunea de azi</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <View
+        style={[
+          styles.screen,
+          {
+            width: contentWidth,
+            paddingBottom: Math.max(8, insets.bottom),
+          },
+        ]}
+      >
+        <View style={styles.headerArea}>
+          <Text
+            style={[
+              styles.missionTitle,
+              {
+                fontSize: isTablet ? 30 : isCompact ? 21 : 25,
+              },
+            ]}
+          >
+            Misiunea de azi
+          </Text>
 
-<View style={styles.progressBar}>
-  <View
-    style={[
-      styles.progressFill,
-      {
-        width: `${((exerciseIndex + 1) / exercises.length) * 100}%`,
-      },
-    ]}
-  />
-</View>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: progressWidth,
+                },
+              ]}
+            />
+          </View>
 
-<Text style={styles.missionProgress}>
-  {exerciseIndex + 1} din {exercises.length}
-</Text>
-      <View style={styles.mindyArea}>
-        
-        <Animated.View
-  style={{
-    transform: [
-      {
-        scale: glow.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.2],
-        }),
-      },
-    ],
-  }}
->
-  <Image
-    source={require('../../assets/images/mindy.png')}
-    style={styles.mindyImage}
-    resizeMode="contain"
-  />
-</Animated.View>  
-
-        <Text style={styles.mindyName}>
-          Mindy {skillStrengthened ? '✨' : ''}
-        </Text>
-      </View>
-
-      {showWow && (
-        <View style={styles.wowBox}>
-          <Text style={styles.sparkle}>✨</Text>
-          <Text style={styles.wowText}>Ai întărit o abilitate!</Text>
-          <Text style={styles.wowSubtext}>
-            Exersând, creierul tău devine mai puternic.
+          <Text style={styles.missionProgress}>
+            {exerciseIndex + 1} din {exercises.length}
           </Text>
         </View>
-      )}
 
-      <Text style={styles.progress}>
-        
-      </Text>
-
-      <Text style={styles.question}>
-        {exercise.question} = ?
-      </Text>
-
-      <View style={styles.answerBox}>
-        <Text style={styles.answer}>{answer}</Text>
-      </View>
-
-      <Text style={styles.feedback}>{feedback}</Text>
-
-      <View style={styles.keypad}>
-        {keys.map((key) => (
-          <Pressable
-            key={key}
-            onPress={() => handleKey(key)}
-            style={[styles.key, key === 'OK' && styles.okKey]}
+        <View style={styles.mindyArea}>
+          <Animated.Text
+            style={[
+              styles.sparkle,
+              {
+                opacity: sparkleOpacity,
+                transform: [{ translateY: sparkleY }],
+              },
+            ]}
           >
-            <Text style={[styles.keyText, key === 'OK' && styles.okText]}>
-              {key}
+            ✨
+          </Animated.Text>
+
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scale: glow.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.16],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Image
+              source={require('../../assets/images/mindy.png')}
+              style={{
+                width: mindySize,
+                height: mindySize,
+              }}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          <Text
+            style={[
+              styles.mindyName,
+              {
+                fontSize: isTablet ? 22 : 18,
+              },
+            ]}
+          >
+            Mindy
+          </Text>
+        </View>
+
+        {showSkillMessage && (
+          <View style={styles.skillCard}>
+            <Text style={styles.skillTitle}>
+              ✨ Ai întărit o abilitate!
             </Text>
-          </Pressable>
-        ))}
+
+            <Text style={styles.skillText}>
+              Exersând, creierul tău devine mai puternic.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.exerciseArea}>
+          <Text
+            style={[
+              styles.question,
+              {
+                fontSize: questionSize,
+              },
+            ]}
+          >
+            {exercise.question}
+          </Text>
+
+          <View
+            style={[
+              styles.answerBox,
+              {
+                height: isCompact ? 54 : 64,
+              },
+            ]}
+          >
+            <Text style={styles.answer}>{answer}</Text>
+          </View>
+
+          <Text style={styles.feedback}>{feedback}</Text>
+        </View>
+
+        <View style={styles.keypad}>
+          {keys.map((key) => (
+            <Pressable
+              key={key}
+              onPress={() => handleKey(key)}
+              style={[
+                styles.key,
+                {
+                  height: keyHeight,
+                },
+                key === 'OK' && styles.okKey,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.keyText,
+                  {
+                    fontSize: keyFontSize,
+                  },
+                  key === 'OK' && styles.okText,
+                ]}
+              >
+                {key}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#F7FAFF',
-    alignItems: 'center',
-    paddingTop: 38,
-    paddingHorizontal: 28,
-  },missionTitle: {
-  fontSize: 26,
-  fontWeight: '800',
-  marginBottom: 12,
-},
-progressBar: {
-  width: '100%',
-  height: 12,
-  backgroundColor: '#E4EAF3',
-  borderRadius: 10,
-  overflow: 'hidden',
-  marginBottom: 6,
-},
-progressFill: {
-  height: '100%',
-  backgroundColor: '#2477F3',
-  borderRadius: 10,
-},
-missionProgress: {
-  fontSize: 15,
-  fontWeight: '600',
-  marginBottom: 10,
-},
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
   },
-  mindyImage: {
-  width: 135,
-  height: 135,
+
+  screen: {
+    flex: 1,
+    alignSelf: 'center',
+    paddingHorizontal: 8,
+    paddingTop: 4,
+  },
+
+  headerArea: {
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+
+  missionTitle: {
+    fontWeight: '800',
+    marginBottom: 7,
+  },
+
+  progressBar: {
+    width: '100%',
+    height: 9,
+    backgroundColor: '#E4EAF3',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2477F3',
+    borderRadius: 10,
+  },
+
+  missionProgress: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 4,
   },
 
   mindyArea: {
     alignItems: 'center',
-    marginBottom: 8,
+    position: 'relative',
+    marginTop: 2,
+    flexShrink: 0,
   },
-  mindyBrain: {
-    fontSize: 52,
-  },
+
   mindyName: {
-    fontSize: 20,
     fontWeight: '800',
+    marginTop: -3,
+  },
+
+  sparkle: {
+    position: 'absolute',
+    bottom: 8,
+    zIndex: 5,
+    fontSize: 30,
+  },
+
+  skillCard: {
+    alignSelf: 'center',
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: '#FFF7D6',
+    alignItems: 'center',
+    width: '92%',
+    maxWidth: 340,
+  },
+
+  skillTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  skillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
     marginTop: 2,
   },
-  wowBox: {
-    width: '100%',
-    backgroundColor: '#FFF7D6',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+
+  exerciseArea: {
     alignItems: 'center',
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: '#FFD95A',
+    marginTop: 10,
+    marginBottom: 6,
+    flexShrink: 0,
   },
-  sparkle: {
-    fontSize: 34,
-  },
-  wowText: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  wowSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  progress: {
-    fontSize: 16,
-    marginBottom: 12,
-  },
+
   question: {
-    fontSize: 42,
     fontWeight: '800',
-    marginBottom: 16,
+    marginBottom: 9,
   },
+
   answerBox: {
-    width: 165,
-    height: 68,
+    width: 160,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#D9E2F0',
@@ -301,69 +443,68 @@ missionProgress: {
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   answer: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '700',
   },
+
   feedback: {
-    height: 32,
-    marginTop: 8,
-    fontSize: 20,
+    height: 25,
+    marginTop: 4,
+    fontSize: 17,
     fontWeight: '700',
   },
+
   keypad: {
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 3,
+    marginTop: 'auto',
+    flexShrink: 0,
   },
+
   key: {
-    width: '30%',
-    height: 60,
+    width: '31%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 7,
     borderWidth: 1,
     borderColor: '#D9E2F0',
   },
+
   okKey: {
     backgroundColor: '#2477F3',
   },
+
   keyText: {
-    fontSize: 25,
     fontWeight: '700',
   },
+
   okText: {
     color: '#FFFFFF',
   },
+
   finishedContainer: {
     flex: 1,
-    backgroundColor: '#F7FAFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    paddingHorizontal: 28,
   },
-  finishedBrain: {
-    fontSize: 72,
-    marginBottom: 16,
-  },
+
   finishedTitle: {
     fontSize: 30,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 14,
+    marginTop: 10,
   },
+
   finishedText: {
     fontSize: 20,
     textAlign: 'center',
-  },
-  finishedSkill: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginTop: 18,
-    textAlign: 'center',
+    marginTop: 12,
   },
 });
