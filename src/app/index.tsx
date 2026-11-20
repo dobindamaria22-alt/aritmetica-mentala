@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Animated,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -122,30 +123,42 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Aritmetică Mentală</Text>
+<Text style={styles.missionTitle}>Misiunea de azi</Text>
 
+<View style={styles.progressBar}>
+  <View
+    style={[
+      styles.progressFill,
+      {
+        width: `${((exerciseIndex + 1) / exercises.length) * 100}%`,
+      },
+    ]}
+  />
+</View>
+
+<Text style={styles.missionProgress}>
+  {exerciseIndex + 1} din {exercises.length}
+</Text>
       <View style={styles.mindyArea}>
-        <Animated.Text
-          style={[
-            styles.mindyBrain,
-            {
-              transform: [
-                {
-                  scale: glow.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 1.35],
-                  }),
-                },
-              ],
-              opacity: glow.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1],
-              }),
-            },
-          ]}
-        >
-          🧠
-        </Animated.Text>
+        
+        <Animated.View
+  style={{
+    transform: [
+      {
+        scale: glow.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.2],
+        }),
+      },
+    ],
+  }}
+>
+  <Image
+    source={require('../../assets/images/mindy.png')}
+    style={styles.mindyImage}
+    resizeMode="contain"
+  />
+</Animated.View>  
 
         <Text style={styles.mindyName}>
           Mindy {skillStrengthened ? '✨' : ''}
@@ -163,7 +176,7 @@ export default function HomeScreen() {
       )}
 
       <Text style={styles.progress}>
-        Exercițiul {exerciseIndex + 1} din {exercises.length}
+        
       </Text>
 
       <Text style={styles.question}>
@@ -200,12 +213,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 38,
     paddingHorizontal: 28,
-  },
+  },missionTitle: {
+  fontSize: 26,
+  fontWeight: '800',
+  marginBottom: 12,
+},
+progressBar: {
+  width: '100%',
+  height: 12,
+  backgroundColor: '#E4EAF3',
+  borderRadius: 10,
+  overflow: 'hidden',
+  marginBottom: 6,
+},
+progressFill: {
+  height: '100%',
+  backgroundColor: '#2477F3',
+  borderRadius: 10,
+},
+missionProgress: {
+  fontSize: 15,
+  fontWeight: '600',
+  marginBottom: 10,
+},
   title: {
     fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
   },
+  mindyImage: {
+  width: 135,
+  height: 135,
+  },
+
   mindyArea: {
     alignItems: 'center',
     marginBottom: 8,
