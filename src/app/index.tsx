@@ -146,7 +146,13 @@ export default function HomeScreen() {
         return;
       }
 
+      setLocked(true);
       setFeedback('Mai exersăm puțin.');
+      setTimeout(() => {
+        setAnswer('');
+        setFeedback('');
+        setLocked(false);
+      }, 900);
       return;
     }
 
