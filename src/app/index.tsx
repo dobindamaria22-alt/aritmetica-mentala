@@ -1,5 +1,11 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 const exercises = [
   { question: '7 + 5', answer: '12' },
@@ -16,8 +22,37 @@ export default function HomeScreen() {
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [finished, setFinished] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [skillStrengthened, setSkillStrengthened] = useState(false);
+  const [showWow, setShowWow] = useState(false);
+
+  const glow = useRef(new Animated.Value(0)).current;
 
   const exercise = exercises[exerciseIndex];
+
+  function triggerSkillMoment() {
+    setSkillStrengthened(true);
+    setShowWow(true);
+
+    glow.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(glow, {
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glow, {
+        toValue: 0.4,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      setShowWow(false);
+    }, 3000);
+  }
 
   function handleKey(key: string) {
     if (finished) return;
@@ -30,7 +65,14 @@ export default function HomeScreen() {
 
     if (key === 'OK') {
       if (answer === exercise.answer) {
+        const newCorrectCount = correctCount + 1;
+
+        setCorrectCount(newCorrectCount);
         setFeedback('Corect! 🎉');
+
+        if (newCorrectCount === 3 && !skillStrengthened) {
+          triggerSkillMoment();
+        }
 
         setTimeout(() => {
           if (exerciseIndex === exercises.length - 1) {
@@ -41,23 +83,39 @@ export default function HomeScreen() {
             setAnswer('');
             setFeedback('');
           }
-        }, 600);
+        }, newCorrectCount === 3 ? 3200: 600);
       } else {
-        setFeedback('Mai încearcă.');
+        setFeedback('Mai exersăm puțin.');
       }
 
       return;
     }
 
-    setAnswer(answer + key);
+    if (answer.length < 3) {
+      setAnswer(answer + key);
+    }
+
     setFeedback('');
   }
 
   if (finished) {
     return (
       <View style={styles.finishedContainer}>
-        <Text style={styles.finishedTitle}>Sesiune terminată! 🎉</Text>
-        <Text style={styles.finishedText}>Ai rezolvat 5 exerciții.</Text>
+        <Text style={styles.finishedBrain}>
+          🧠 {skillStrengthened ? '✨' : ''}
+        </Text>
+
+        <Text style={styles.finishedTitle}>Misiune terminată! 🎉</Text>
+
+        <Text style={styles.finishedText}>
+          Ai rezolvat 5 exerciții.
+        </Text>
+
+        {skillStrengthened && (
+          <Text style={styles.finishedSkill}>
+            Ai întărit o abilitate!
+          </Text>
+        )}
       </View>
     );
   }
@@ -66,11 +124,51 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Aritmetică Mentală</Text>
 
+      <View style={styles.mindyArea}>
+        <Animated.Text
+          style={[
+            styles.mindyBrain,
+            {
+              transform: [
+                {
+                  scale: glow.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.35],
+                  }),
+                },
+              ],
+              opacity: glow.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1],
+              }),
+            },
+          ]}
+        >
+          🧠
+        </Animated.Text>
+
+        <Text style={styles.mindyName}>
+          Mindy {skillStrengthened ? '✨' : ''}
+        </Text>
+      </View>
+
+      {showWow && (
+        <View style={styles.wowBox}>
+          <Text style={styles.sparkle}>✨</Text>
+          <Text style={styles.wowText}>Ai întărit o abilitate!</Text>
+          <Text style={styles.wowSubtext}>
+            Exersând, creierul tău devine mai puternic.
+          </Text>
+        </View>
+      )}
+
       <Text style={styles.progress}>
         Exercițiul {exerciseIndex + 1} din {exercises.length}
       </Text>
 
-      <Text style={styles.question}>{exercise.question} = ?</Text>
+      <Text style={styles.question}>
+        {exercise.question} = ?
+      </Text>
 
       <View style={styles.answerBox}>
         <Text style={styles.answer}>{answer}</Text>
@@ -100,26 +198,62 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7FAFF',
     alignItems: 'center',
-    paddingTop: 55,
+    paddingTop: 38,
     paddingHorizontal: 28,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  mindyArea: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mindyBrain: {
+    fontSize: 52,
+  },
+  mindyName: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  wowBox: {
+    width: '100%',
+    backgroundColor: '#FFF7D6',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#FFD95A',
+  },
+  sparkle: {
+    fontSize: 34,
+  },
+  wowText: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  wowSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 4,
   },
   progress: {
-    fontSize: 18,
-    marginBottom: 25,
+    fontSize: 16,
+    marginBottom: 12,
   },
   question: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: '800',
-    marginBottom: 25,
+    marginBottom: 16,
   },
   answerBox: {
-    width: 170,
-    height: 75,
+    width: 165,
+    height: 68,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#D9E2F0',
@@ -128,13 +262,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   answer: {
-    fontSize: 38,
+    fontSize: 36,
     fontWeight: '700',
   },
   feedback: {
-    height: 40,
-    marginTop: 12,
-    fontSize: 22,
+    height: 32,
+    marginTop: 8,
+    fontSize: 20,
     fontWeight: '700',
   },
   keypad: {
@@ -142,16 +276,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 5,
+    marginTop: 3,
   },
   key: {
     width: '30%',
-    height: 68,
+    height: 60,
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#D9E2F0',
   },
@@ -159,7 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2477F3',
   },
   keyText: {
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: '700',
   },
   okText: {
@@ -172,14 +306,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 30,
   },
+  finishedBrain: {
+    fontSize: 72,
+    marginBottom: 16,
+  },
   finishedTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   finishedText: {
-    fontSize: 22,
+    fontSize: 20,
+    textAlign: 'center',
+  },
+  finishedSkill: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 18,
     textAlign: 'center',
   },
 });
